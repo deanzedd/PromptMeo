@@ -134,6 +134,20 @@ def extend_cfg(cfg):
     cfg.TRAINER.IVLP.PROMPT_DEPTH_VISION = 9  # Max 12, minimum 0, for 0 it will act as shallow IVLP prompting (J=1)
     cfg.TRAINER.IVLP.PROMPT_DEPTH_TEXT = 9  # Max 12, minimum 0, for 0 it will act as shallow IVLP prompting(J=1)
     cfg.DATASET.SUBSAMPLE_CLASSES = "all"  # all, base or new
+    
+    # config for propose method
+    cfg.TRAINER.PROMPTMEO = CN()
+    cfg.TRAINER.PROMPTMEO.N_CTX_VISION = 4  # number of context vectors at the vision branch
+    cfg.TRAINER.PROMPTMEO.N_CTX_TEXT = 4  # number of context vectors at the language branch
+    cfg.TRAINER.PROMPTMEO.CTX_INIT = "a photo of a"  # initialization words
+    cfg.TRAINER.PROMPTMEO.PREC = "fp16"  # fp16, fp32, amp
+    cfg.TRAINER.PROMPTMEO.PROMPT_DEPTH_VISION = 9  # Max 12, minimum 0, for 0 it will be using shallow IVLP prompting (J=1)
+    cfg.TRAINER.PROMPTMEO.PROMPT_DEPTH_TEXT = 9  # Max 12, minimum 0, for 0 it will be using shallow IVLP prompting (J=1)
+    cfg.TRAINER.PROMPTMEO.TEXT_LOSS_WEIGHT = 25
+    cfg.TRAINER.PROMPTMEO.IMAGE_LOSS_WEIGHT = 10
+    cfg.TRAINER.PROMPTMEO.GPA_MEAN = 15
+    cfg.TRAINER.PROMPTMEO.GPA_STD = 1
+    cfg.DATASET.SUBSAMPLE_CLASSES = "all"  # all, base or new
 
 
 def setup_cfg(args):
@@ -219,6 +233,7 @@ if __name__ == "__main__":
     parser.add_argument("--backbone", type=str, default="", help="name of CNN backbone")
     parser.add_argument("--head", type=str, default="", help="name of head")
     parser.add_argument("--eval-only", action="store_true", help="evaluation only")
+    parser.add_argument("--shots", type=int, default=1, help="number of training shots")
     parser.add_argument(
         "--model-dir",
         type=str,
