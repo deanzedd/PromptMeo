@@ -612,6 +612,18 @@ class CLIP(nn.Module):
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
 
         return x
+    
+    def forward_text(self, prompts, tokenized_prompts):
+        x = prompts + self.positional_embedding.type(self.dtype)
+        x = x.permute(1, 0, 2)  # NLD -> LND
+        x = self.transformer(x).type(self.dtype) # lỗi dòng này
+        x = x.permute(1, 0, 2)  # LND -> NLD
+        x = self.ln_final(x)
+        x = x[torch.arange(x.shape[0]), tokenized_prompts.argmax(dim=-1)] @ self.text_projection
+        x = x / x.norm(dim=-1, keepdim=True)  # norm after embed
+        return x
+    
+    
 
     def forward(self, image, text):
         image_features = self.encode_image(image)

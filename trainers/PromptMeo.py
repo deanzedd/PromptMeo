@@ -25,6 +25,7 @@ from .style_generator import RandomStyleGenerator, BaseStyleGenerator, MixStyleG
 
 exist = lambda target_path: os.path.exists(target_path)
 _tokenizer = _Tokenizer()
+'''
 
 class clip_net(nn.Module):
     def __init__(self, cfg, model_cfg, device, **kwargs):
@@ -63,16 +64,19 @@ class clip_net(nn.Module):
             t_img = self.head(t_img)  # img embed after head without norm
         return t_img
 
+'''
 
 def load_clip_to_cpu(cfg, zero_shot_model=False):
     backbone_name = cfg.MODEL.BACKBONE.NAME
+    '''
     if (backbone_name=="vitb16_clip"):
         bb_name = 'ViT-B/16'
     elif (backbone_name=="resnet50_clip"):
         bb_name = 'RN50'
     elif (backbone_name=="vitl14_clip"):
         bb_name = 'ViT-L/14'
-    url = clip._MODELS[bb_name]
+    '''    
+    url = clip._MODELS[backbone_name]
     model_path = clip._download(url)
 
     try:
@@ -180,12 +184,12 @@ class VLPromptLearner(nn.Module):
             # Using multiple text templates to ensure textual diversity during training
             for single_template in IMAGENET_TEMPLATES: # tạo 1 file chứa các template cho phase 1 r thêm nó vào IMAGENET_TEMPLATES là xong
                 x = [single_template.replace("{}", name) for name in classnames]
-                x_tokenized = torch.cat([clip.tokenize(p) for p in x])
-                text_features = clip_model_temp.encode_text(x_tokenized.cuda()) #(số_lớp, kích_thước_embedding)
+                x_tokenized = torch.cat([clip.tokenize(p) for p in x]) # torch.Size([7, 77])
+                text_features = clip_model_temp.encode_text(x_tokenized.cuda()) #(số_lớp, kích_thước_embedding) # torch.Size([7, 512])
                 all_teacher_features.append(text_features.unsqueeze(1)) #(số_lớp, 1, kích_thước_embedding)
-                
-            
 
+            
+        # torch.Size([7, 512]) (n_cls, embed)
         self.fixed_embeddings = torch.cat(all_teacher_features, dim=1).mean(dim=1) # (số_lớp, 1, kích_thước_embedding) --> (số_lớp, n_template, kích_thước_embedding) -> (số_lớp, kích_thước_embedding)
         # These token vectors will be saved when in save_model(),
         # but they should be ignored in load_model() as we want to use
@@ -251,12 +255,12 @@ class CustomCLIP(nn.Module):
         self.n_cls = len(classnames)
 
     def forward(self, image, label=None):
-        tokenized_prompts = self.tokenized_prompts
+        tokenized_prompts = self.tokenized_prompts # torch.Size([7, 77]) #token hóa theo form "a photo of cls"
         logit_scale = self.logit_scale.exp()
 
-        prompts = self.prompt_learner()
+        prompts = self.prompt_learner() # torch.Size([7, 77, 512]) (n_cls, n_tkn, dim_embed)
         # Compute the prompted image and text features
-        text_features = self.text_encoder(prompts, tokenized_prompts)
+        text_features = self.text_encoder(prompts, tokenized_prompts) #torch.Size([7, 512]) (n_cls, dim_embed)
         image_features = self.image_encoder(image.type(self.dtype))
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
@@ -277,7 +281,7 @@ class CustomCLIP(nn.Module):
                    image_features, zero_shot_logits, logits
         else:
             return logits
-
+        
 # code thêm hàm tính fixed_embedding tại đây có các hàm load_weight, forward_text
 @TRAINER_REGISTRY.register()
 class PromptMeo(TrainerX):
@@ -303,18 +307,16 @@ class PromptMeo(TrainerX):
         self.output_dir = cfg.OUTPUT_DIR
         self.cfg = cfg
         
-        self.embed_layers = clip_net(cfg, cfg.MODEL, self.device)
+        #self.embed_layers = clip_net(cfg, cfg.MODEL, self.device)
         self.build_train_data()
         self.build_data_loader()
         self.build_model()
+        self.clip_model = load_clip_to_cpu(self.cfg)
+        self.clip_model_cuda = load_clip_to_cpu(self.cfg).cuda()
         
     
     def check_cfg(self, cfg):
         assert cfg.TRAINER.PROMPTMEO.PREC in ["fp16", "fp32", "amp"]
-
-    def forward_text(self, x, t_x):
-        text_encoder_output = self.embed_layers.forward_text(x, t_x)  # without normalize after head
-        return text_encoder_output
     
     def load_weight(self, device="cpu"): # load lại các style embedding vào model
         assert exist(self.weight_save_path), "prompt style weight path not exist!"
@@ -343,8 +345,9 @@ class PromptMeo(TrainerX):
         print("Building custom CLIP")
         self.model = CustomCLIP(cfg, classnames, clip_model)
         #self.embed_layers = clip_net(cfg, cfg.MODEL, self.device)
+        self.text_encoder = TextEncoder(clip_model=clip_model)
         self.load_weight()
-        x = self.style_embedding.shape # torch.Size([80, 1, 512])
+        x = self.style_embedding.shape # torch.Size([80, 1, 512]) (n_style, 1, dim_embed)
         #breakpoint()
 
         print("Turning off gradients in both the image and the text encoder")
@@ -397,11 +400,14 @@ class PromptMeo(TrainerX):
 
     def forward_backward(self, batch):
         image, label, input_stylized_embedding, input_tokenized_base_text = self.parse_batch_train(batch)
-
+        # input_stylized_embedding #torch.Size([4, 77, 512])
+        # input_tokenized_base_text # torch.Size([4, 77])
         model = self.model
         optim = self.optim
         scaler = self.scaler
-
+        # sự phụ thuộc vào dim0
+        # normalized_text_features, zs_clip_text_embeddings: #torch.Size([7, 512]) (phụ thuộc vào số class)
+        # input_stylized_embedding, input_tokenized_base_text, image_ft: #torch.Size([4, *, 512]) (phụ thuộc vào batchsize)
         prec = self.cfg.TRAINER.PROMPTMEO.PREC
         if prec == "amp":
             with autocast():
@@ -413,17 +419,95 @@ class PromptMeo(TrainerX):
         else:
             loss_ce, normalized_text_features, zs_clip_text_embeddings, zs_image_embedd, image_ft, \
             zero_shot_logits, logits = model(image, label)
+            ### vòng for(cls) {for(n_style) sau đó lấy mean}
+            style_position = [1 for _ in self.classnames]
+            #clip_model = load_clip_to_cpu(self.cfg)
+            classnames = self.dm.dataset.classnames
+            base_prompt = ["a photo of a" + " " + name + "." for name in classnames]
+            tokenized_prompts = torch.cat([clip.tokenize(p) for p in base_prompt])  # (n_cls, n_tkn)
+            base_embedding = self.clip_model.token_embedding(tokenized_prompts).type(self.clip_model.dtype) #torch.Size([7, 77, 512])
+            #base_embedding = clip_model_temp.encode_text(tokenized_prompts.cuda()) 
+            #x = base_embedding.shape
+            #print(f"classnames: {self.classnames}") #classnames: ['dog', 'elephant', 'giraffe', 'guitar', 'horse', 'house', 'person']
+            #y = classnames
+            #breakpoint()
+            # cần token và embed base_prompt
+            # self.style_embedding # torch.Size([80, 1, 512])
+            all_feature = [] 
+            for index, name in enumerate(self.classnames):
+                x = [[] for _ in range(len(self.classnames))]
+                for style_id in range(self.cfg.TRAINER.NUM_STYLES): # 80
+                    '''
+                    #new_style_embedding = base_embedding.clone()
+                    new_style_embedding = base_embedding[index].clone()
+                    # ghi đè style_embed vào vị trí style_position trong base_embedding
+                    #new_style_embedding[0, style_position:style_position + 1, :] = self.style_embedding[style_id].clone() 
+                    new_style_embedding[index, style_position:style_position + 1, :] = self.style_embedding[style_id].clone()  
+                    '''
+                    #
+                    stylized_embedding = self.get_stylized_embedding( #torch.Size([1, 77, 512])
+                        base_embedding[index:index + 1, ...],
+                        style_position[index], style_id)
+                    #
+                    x[index].append(stylized_embedding)
+                # Shape kết quả: [80, 1, 77, 512]
+                stacked_tensor = torch.stack(x[index], dim=0)
+                # Shape [80, 1, 77, 512] -> [1, 77, 512]
+                avg_tensor = torch.mean(stacked_tensor, dim=0)
+                all_feature.append(avg_tensor)
+            hamo_text_feat = torch.cat(all_feature, dim=0) #torch.Size([7, 77, 512])
+            #a = hamo_text_feat.shape
+            #tokenized_prompts
+            # Kiểm tra hamo_text_feat
+            #print(f"hamo_text_feat is on: {hamo_text_feat.device}")
+
+            # Kiểm tra tokenized_prompts
+            #print(f"tokenized_prompts is on: {tokenized_prompts.device}")
+            #breakpoint()
+            #text_encoder_output = self.embed_layers.forward_text(hamo_text_feat.cuda(), tokenized_prompts.cuda())
+            #clip_model1 = load_clip_to_cpu(self.cfg).cuda()
+            text_encoder_output = self.clip_model_cuda.forward_text(hamo_text_feat.cuda(), tokenized_prompts.cuda())
+            #b = text_encoder_output.shape
+            #breakpoint() 
+            #new_style_embedding = base_embedding.clone()
+            #new_style_embedding[0, style_position:style_position + 1, :] = self.style_embedding[style_id].clone()
             
+            '''
+            def get_stylized_embedding(self, single_base_embedding, style_position, style_id):
+                assert style_id < len(self.style_embedding), "Style id is outside the length of the style list!"
+                new_style_embedding = single_base_embedding.clone()
+                new_style_embedding[0, style_position:style_position + 1, :] = self.style_embedding[style_id].clone()
+                return new_style_embedding
+                
+            stylized_embedding = self.style_generator.get_stylized_embedding(
+                self.base_embedding[item.label:item.label + 1, ...],
+                self.style_position[item.label],
+                item.style)
+                
+            self.tokenized_base_text = torch.cat([clip.tokenize(p) for p in base_text_list]).to(self.device)
+            # torch.size([7, 77, 512])
+            self.base_embedding = clip_model.token_embedding(self.tokenized_base_text).to("cpu") # torch.size([7, 77, 512])
+            
+            self.style_position = [1 for _ in self.classnames]
+            '''
+            
+            ###
             #cal fixed text embed
             # yêu cầu torch.size[]
-            text_encoder_output = self.embed_layers.forward_text(input_stylized_embedding, input_tokenized_base_text)
+            #a = input_stylized_embedding.shape
+            #b = input_tokenized_base_text.shape
+            #c = image_ft.shape
+            #breakpoint()
+            #text_encoder_output_1 = self.text_encoder.forward(input_stylized_embedding, input_tokenized_base_text)
+            #text_encoder_output = self.embed_layers.forward_text(input_stylized_embedding, input_tokenized_base_text)
             text_encoder_output = text_encoder_output / text_encoder_output.norm(dim=-1, keepdim=True)
             # Calculate the L_SCL_text loss
             #loss_scl_text = F.l1_loss(normalized_text_features, zs_clip_text_embeddings.cuda(),
-            #                          reduction='mean') * self.cfg.TRAINER.PROMPTMEO.TEXT_LOSS_WEIGHT
-            a = normalized_text_features.shape #torch.Size([7, 512])
-            b = text_encoder_output.shape # torch.Size([4, 512])
-            breakpoint() 
+            #                         reduction='mean') * self.cfg.TRAINER.PROMPTMEO.TEXT_LOSS_WEIGHT
+            #a = normalized_text_features.shape #torch.Size([7, 512]) (n_cls, dim_embed)
+            #b = text_encoder_output.shape # torch.Size([4, 512])
+            #c = text_encoder_output_1.shape
+            #breakpoint() 
             loss_scl_text = F.l1_loss(normalized_text_features, text_encoder_output.cuda(),
                                       reduction='mean') * self.cfg.TRAINER.PROMPTMEO.TEXT_LOSS_WEIGHT
             # Calculate the L_SCL_image loss
@@ -555,11 +639,19 @@ class PromptMeo(TrainerX):
             lines = f.read().splitlines()
         class_dict = {index: value for index, value in enumerate(lines)}
         classnames = list(class_dict.values())
+        self.classnames = classnames
         self.num_classes = len(classnames)
         assert self.cfg.STYLE_GENERATOR.NAME in globals()
+        clip_model = load_clip_to_cpu(self.cfg).cuda()
+        #self.style_generator = globals()[self.cfg.STYLE_GENERATOR.NAME](self.cfg, classnames, #self.cfg.STYLE_GENERATOR.NAME = PromptStylerGenerator
+        #                                                                self.embed_layers.backbone, self.device)
+        #print(f"hamo_text_feat is on: {self.embed_layers.backbone.device}")
+
+            # Kiểm tra tokenized_prompts
+        #print(f"tokenized_prompts is on: {self.device}")
+        #breakpoint()
         self.style_generator = globals()[self.cfg.STYLE_GENERATOR.NAME](self.cfg, classnames, #self.cfg.STYLE_GENERATOR.NAME = PromptStylerGenerator
-                                                                        self.embed_layers.backbone, self.device)
-        
+                                                                        clip_model, self.device)
         #self.style_generator = 
         
     def train(self):
@@ -570,3 +662,10 @@ class PromptMeo(TrainerX):
             #if self.epoch % 2 == 0:
             #    self.after_epoch()
         self.after_train()
+        
+    def get_stylized_embedding(self, single_base_embedding, style_position, style_id):
+        assert style_id < len(self.style_embedding), "Style id is outside the length of the style list!"
+        new_style_embedding = single_base_embedding.clone()
+        #new_style_embedding[:, style_position:style_position + 1, :] = self.style_embedding[style_id].clone()
+        new_style_embedding[0, style_position:style_position + 1, :] = self.style_embedding[style_id].clone()
+        return new_style_embedding

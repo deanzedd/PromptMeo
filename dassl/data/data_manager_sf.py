@@ -297,7 +297,9 @@ class BaseStyleGenerator(nn.Module):
         # position_offset = [0 if len(j.split("_")) == 1 else 2 for j in self.classnames]
         self.style_position = [1 for _ in self.classnames]
         # 基础的风格向量
+        # torch.size([7, 77])
         self.tokenized_base_text = torch.cat([clip.tokenize(p) for p in base_text_list]).to(self.device)
+        # torch.size([7, 77, 512])
         self.base_embedding = clip_model.token_embedding(self.tokenized_base_text).to("cpu")  # 将基础风格的token转为embedding
         self.style_embedding = []  # 保存k个风格
         self.stylized_base_text_encoder_out = []  # 保存只包含k个风格的文本（没有类别）
@@ -427,8 +429,8 @@ class DatasetWrapper_train_sf(TorchDataset):
         # class_init_embedding[:, self.class_token_position[item.label]:self.class_token_position[item.label] + 1,
         # :] = style_init_embedding  # 替换风格
 
-        output["stylized_embedding"] = stylized_embedding.squeeze(0)
-        output["tokenized_base_text"] = self.tokenized_base_text[item.label:item.label + 1, :].clone().squeeze(0)
+        output["stylized_embedding"] = stylized_embedding.squeeze(0).detach() #torch.Size([4, 77, 512])
+        output["tokenized_base_text"] = self.tokenized_base_text[item.label:item.label + 1, :].clone().squeeze(0).detach() # torch.Size([4, 77])
 
         return output
     

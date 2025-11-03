@@ -5,7 +5,7 @@ import clip
 from .build import BACKBONE_REGISTRY
 from .backbone import Backbone
 
-
+'''
 class Clip(Backbone):
     def __init__(self, clip_enocder_name, device):
         super().__init__()
@@ -59,3 +59,4 @@ def vitb16_clip(device, **kwargs):
 def vitl14_clip(device, **kwargs):
     model = Clip('ViT-L/14', device)
     return model
+'''

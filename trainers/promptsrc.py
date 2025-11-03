@@ -187,6 +187,9 @@ class CustomCLIP(nn.Module):
         logit_scale = self.logit_scale.exp()
 
         prompts = self.prompt_learner()
+        a = prompts.shape
+        b = tokenized_prompts.shape
+        breakpoint()
         # Compute the prompted image and text features
         text_features = self.text_encoder(prompts, tokenized_prompts)
         image_features = self.image_encoder(image.type(self.dtype))
@@ -296,6 +299,9 @@ class PromptSRC(TrainerX):
         else:
             loss_ce, normalized_text_features, zs_clip_text_embeddings, zs_image_embedd, image_ft, \
             zero_shot_logits, logits = model(image, label)
+            a = zs_image_embedd.shape
+            b = normalized_text_features.shape
+            breakpoint()
             # Calculate the L_SCL_text loss
             loss_scl_text = F.l1_loss(normalized_text_features, zs_clip_text_embeddings.cuda(),
                                       reduction='mean') * self.cfg.TRAINER.PROMPTSRC.TEXT_LOSS_WEIGHT

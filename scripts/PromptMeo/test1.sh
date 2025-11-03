@@ -4,10 +4,10 @@ DATA="/mnt/disk1/theanh28/LAMM/DATA1"
 TRAINER=PromptMeo
 #CFG=vit_b16_ep50_ctxv1
 DATASET=PACS_SF
-CFG=vit_b16_c2_ep20_batch4_4+4ctx_cross_datasets  # config file
+CFG=test  # config file
 
 #/mnt/disk1/theanh28/PromptMeo/configs/trainers/PromptMeo/vit_b16_c2_ep20_batch4_4+4ctx_cross_datasets.yaml
-# bash scripts/PromptMeo/test.sh
+# bash scripts/PromptMeo/test1.sh
 # bash scripts/promptsrc/Multi_officeDG.sh 
 # bash scripts/promptsrc/Single_PACS.sh PACS vit_b16_c2_ep20_batch4_4+4ctx_cross_datasets
 # CUDA_VISIBLE_DEVICES=3
@@ -42,7 +42,7 @@ do
         DIR=output/base/${DATASET}/${TRAINER}/${CFG}/seed${SEED}/Multi_domain/${DOMAIN}
         if [ -d "$DIR" ]; then
             echo "Results are available in ${DIR}. Resuming..."
-            CUDA_VISIBLE_DEVICES=3 python3 -m train \
+            CUDA_VISIBLE_DEVICES=2 python3 -m train \
             --root ${DATA} \
             --seed ${SEED} \
             --trainer ${TRAINER} \
@@ -54,7 +54,7 @@ do
             --num_styles 80 --txts_path dassl/txts
         else
             echo "Run this job and save the output to ${DIR}"
-            CUDA_VISIBLE_DEVICES=3 python3 -m train \
+            CUDA_VISIBLE_DEVICES=2 python3 -m train \
             --root ${DATA} \
             --seed ${SEED} \
             --trainer ${TRAINER} \

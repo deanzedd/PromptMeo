@@ -32,7 +32,7 @@ class BaseStyleGenerator(nn.Module):
         # position_offset = [0 if len(j.split("_")) == 1 else 2 for j in self.classnames]
         self.style_position = [1 for _ in self.classnames]
         # 基础的风格向量
-        self.tokenized_base_text = torch.cat([clip.tokenize(p) for p in base_text_list]).to(self.device)
+        self.tokenized_base_text = torch.cat([clip.tokenize(p) for p in base_text_list]).to(self.device) 
         self.base_embedding = clip_model.token_embedding(self.tokenized_base_text).to("cpu")  # 将基础风格的token转为embedding
         self.style_embedding = []  # 保存k个风格
         self.stylized_base_text_encoder_out = []  # 保存只包含k个风格的文本（没有类别）
