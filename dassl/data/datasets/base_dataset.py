@@ -8,6 +8,42 @@ import gdown
 
 from dassl.utils import check_isfile
 
+class Datum_sf:
+    def __init__(self, cls=0, style=0, label=0, classname="", impath="", domain=0):
+        assert isinstance(classname, str)
+        assert check_isfile(impath)
+
+        self._cls = cls
+        self._style=style
+        self._label=label
+        self._classname=classname
+        self._impath = impath
+        self._domain = domain
+
+
+    @property
+    def cls(self):
+        return self._cls
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def style(self):
+        return self._style
+
+    @property
+    def classname(self):
+        return self._classname
+    
+    @property
+    def impath(self):
+        return self._impath
+    
+    @property
+    def domain(self):
+        return self._domain
 
 class Datum:
     """Data instance which defines the basic attributes.

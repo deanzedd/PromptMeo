@@ -9,7 +9,7 @@ import clip
 from torch.utils.data import Dataset
 
 from dassl.config import get_cfg_default
-from dassl.modeling.backbone import resnet50_clip
+#from dassl.modeling.backbone import resnet50_clip
 
 exist = lambda target_path: os.path.exists(target_path)
 

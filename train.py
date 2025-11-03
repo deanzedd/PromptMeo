@@ -75,6 +75,18 @@ def reset_cfg(cfg, args):
 
     if args.head:
         cfg.MODEL.HEAD.NAME = args.head
+        
+    if args.num_styles:
+        cfg.TRAINER.NUM_STYLES = args.num_styles
+
+    if args.txts_path:
+        cfg.TXTS_PATH = args.txts_path
+
+    if args.eval_epoch:
+        cfg.TRAINER.EVAL_EPOCH=args.eval_epoch
+
+    if args.refresh:
+        cfg.TRAINER.REFRESH=args.refresh
 
 
 def extend_cfg(cfg):
@@ -148,7 +160,11 @@ def extend_cfg(cfg):
     cfg.TRAINER.PROMPTMEO.GPA_MEAN = 15
     cfg.TRAINER.PROMPTMEO.GPA_STD = 1
     cfg.DATASET.SUBSAMPLE_CLASSES = "all"  # all, base or new
-
+    
+    cfg.STYLE_GENERATOR = CN()
+    cfg.STYLE_GENERATOR.NAME = "PromptStylerGenerator"
+    cfg.STYLE_GENERATOR.PATH = ""
+    cfg.STYLE_GENERATOR.ENABLE_DIVERSE = "False"
 
 def setup_cfg(args):
     cfg = get_cfg_default()
@@ -251,6 +267,30 @@ if __name__ == "__main__":
         default=None,
         nargs=argparse.REMAINDER,
         help="modify config options using the command-line",
+    )
+    parser.add_argument(
+        '--num_styles',
+        type=int,
+        default=80,
+        help='random styles'
+    )
+    parser.add_argument(
+        '--txts_path',
+        type=str,
+        default='',
+        help='txt path'
+    )
+    parser.add_argument(
+        '--eval_epoch',
+        type=int,
+        default=0,
+        help='eval_after'
+    )
+    parser.add_argument(
+        '--refresh',
+        type=str,
+        default='',
+        help='refresh style every epoch'
     )
     args = parser.parse_args()
     main(args)

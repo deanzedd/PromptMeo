@@ -27,7 +27,7 @@ TRAIN:
 
 MODEL:
   BACKBONE:
-    NAME: "ViT-B/16"
+    NAME: "vitb16_clip"
 
 TRAINER:
   PROMPTMEO:
@@ -41,3 +41,8 @@ TRAINER:
     IMAGE_LOSS_WEIGHT: 10
     GPA_MEAN: 6
     GPA_STD: 10
+
+STYLE_GENERATOR:
+  NAME: "PromptStylerGenerator"  # Khởi tạo mục này, cho dù giá trị ban đầu là rỗng
+  PATH: ""
+  ENABLE_DIVERSE: ""

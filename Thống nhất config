@@ -1,0 +1,11 @@
+MODEL:
+  BACKBONE:
+    NAME: vitb16_clip, resnet50_clip, vitl14_clip
+    PRETRAINED: True
+  HEAD:
+    ACTIVATION: relu
+    BN: True
+    DROPOUT: 0.0
+    HIDDEN_LAYERS: ()
+    NAME: 
+  INIT_WEIGHTS: 

@@ -124,7 +124,12 @@ def load(name: str, device: Union[str, torch.device] = "cuda" if torch.cuda.is_a
         state_dict = torch.load(model_path, map_location="cpu")
 
     if not jit:
-        model = build_model(state_dict or model.state_dict()).to(device)
+        design_details = {"trainer": 'IVLP',
+                          "vision_depth": 3,
+                          "language_depth": 3,
+                          "vision_ctx": 4,
+                          "language_ctx": 4}
+        model = build_model(state_dict or model.state_dict(), design_details).to(device)
         if str(device) == "cpu":
             model.float()
         return model, _transform(model.visual.input_resolution)

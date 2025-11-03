@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
+#from ..dassl.modeling.backbone import BACKBONE_REGISTRY
 
 
 class Bottleneck(nn.Module):
@@ -697,3 +698,22 @@ def build_model(state_dict: dict, design_details):
         missing_keys, _ = model.load_state_dict(state_dict, strict=False)
         print('Weights not found for some missing keys: ', missing_keys)
     return model.eval()
+
+'''
+@BACKBONE_REGISTRY.register()
+def resnet50_clip(device, **kwargs):
+    model = CLIP('RN50', device)
+    return model
+
+
+@BACKBONE_REGISTRY.register()
+def vitb16_clip(device, **kwargs):
+    model = CLIP('ViT-B/16', device)
+    return model
+
+
+@BACKBONE_REGISTRY.register()
+def vitl14_clip(device, **kwargs):
+    model = CLIP('ViT-L/14', device)
+    return model
+'''

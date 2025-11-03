@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from collections import OrderedDict
 from torch.cuda.amp import GradScaler, autocast
 from dassl.modeling import build_head, build_backbone
 from dassl.engine import TRAINER_REGISTRY, TrainerX
@@ -65,7 +66,13 @@ class clip_net(nn.Module):
 
 def load_clip_to_cpu(cfg, zero_shot_model=False):
     backbone_name = cfg.MODEL.BACKBONE.NAME
-    url = clip._MODELS[backbone_name]
+    if (backbone_name=="vitb16_clip"):
+        bb_name = 'ViT-B/16'
+    elif (backbone_name=="resnet50_clip"):
+        bb_name = 'RN50'
+    elif (backbone_name=="vitl14_clip"):
+        bb_name = 'ViT-L/14'
+    url = clip._MODELS[bb_name]
     model_path = clip._download(url)
 
     try:
@@ -163,7 +170,7 @@ class VLPromptLearner(nn.Module):
         #code thêm hàm tính fixed_embedding có tensor[n_cls, size_embed]
         
         #chắc phải chỉnh lại cái device 
-        self.embed_layer = clip_net(cfg, cfg.MODEL, cfg.device)        
+        #self.embed_layer = clip_net(cfg, cfg.MODEL, cfg.device)        
         with torch.no_grad():
             embedding = clip_model.token_embedding(tokenized_prompts).type(dtype)
             self.ZS_image_encoder = clip_model_temp_image.visual
@@ -274,14 +281,32 @@ class CustomCLIP(nn.Module):
 # code thêm hàm tính fixed_embedding tại đây có các hàm load_weight, forward_text
 @TRAINER_REGISTRY.register()
 class PromptMeo(TrainerX):
-    def __init__(self):
+    def __init__(self, cfg):
         #super().__init__()
         self.style_generator: BaseStyleGenerator = None
+        self.num_classes = None
+        self._models = OrderedDict()
+        self._optims = OrderedDict()
+        self._scheds = OrderedDict()
+        self._writer = None
         
+        self.check_cfg(cfg)
+
+        if torch.cuda.is_available() and cfg.USE_CUDA:
+            self.device = torch.device("cuda")
+        else:
+            self.device = torch.device("cpu")
+
+        # Save as attributes some frequently used variables
+        self.start_epoch = self.epoch = 0
+        self.max_epoch = cfg.OPTIM.MAX_EPOCH
+        self.output_dir = cfg.OUTPUT_DIR
+        self.cfg = cfg
         
-        self.build_model()
+        self.embed_layers = clip_net(cfg, cfg.MODEL, self.device)
         self.build_train_data()
         self.build_data_loader()
+        self.build_model()
         
     
     def check_cfg(self, cfg):
@@ -304,8 +329,9 @@ class PromptMeo(TrainerX):
         cfg = self.cfg
         classnames = self.dm.dataset.classnames
         # chỉnh lại đường dẫn chuẩn
-        self.weight_save_path = os.path.join(cfg.TRAINER.PROMPTMEO.WEIGHT_DIR_PATH,
-                                             cfg.TRAINER.PROMPTMEO.CHECK_POINT_NAME)
+        self.weight_save_path = "/mnt/disk1/theanh28/DPStyler/PromptStyler/output/pacs/vitb16_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+        #os.path.join(cfg.TRAINER.PROMPTMEO.WEIGHT_DIR_PATH,
+        #                                     cfg.TRAINER.PROMPTMEO.CHECK_POINT_NAME)
         
         print(f"Loading CLIP (backbone: {cfg.MODEL.BACKBONE.NAME})")
         clip_model = load_clip_to_cpu(cfg)
@@ -316,10 +342,10 @@ class PromptMeo(TrainerX):
 
         print("Building custom CLIP")
         self.model = CustomCLIP(cfg, classnames, clip_model)
-        self.embed_layers = clip_net(cfg, cfg.MODEL, self.device)
+        #self.embed_layers = clip_net(cfg, cfg.MODEL, self.device)
         self.load_weight()
         x = self.style_embedding.shape # torch.Size([80, 1, 512])
-        breakpoint()
+        #breakpoint()
 
         print("Turning off gradients in both the image and the text encoder")
         name_to_update = "prompt_learner"
@@ -387,8 +413,18 @@ class PromptMeo(TrainerX):
         else:
             loss_ce, normalized_text_features, zs_clip_text_embeddings, zs_image_embedd, image_ft, \
             zero_shot_logits, logits = model(image, label)
+            
+            #cal fixed text embed
+            # yêu cầu torch.size[]
+            text_encoder_output = self.embed_layers.forward_text(input_stylized_embedding, input_tokenized_base_text)
+            text_encoder_output = text_encoder_output / text_encoder_output.norm(dim=-1, keepdim=True)
             # Calculate the L_SCL_text loss
-            loss_scl_text = F.l1_loss(normalized_text_features, zs_clip_text_embeddings.cuda(),
+            #loss_scl_text = F.l1_loss(normalized_text_features, zs_clip_text_embeddings.cuda(),
+            #                          reduction='mean') * self.cfg.TRAINER.PROMPTMEO.TEXT_LOSS_WEIGHT
+            a = normalized_text_features.shape #torch.Size([7, 512])
+            b = text_encoder_output.shape # torch.Size([4, 512])
+            breakpoint() 
+            loss_scl_text = F.l1_loss(normalized_text_features, text_encoder_output.cuda(),
                                       reduction='mean') * self.cfg.TRAINER.PROMPTMEO.TEXT_LOSS_WEIGHT
             # Calculate the L_SCL_image loss
             loss_scl_image = F.l1_loss(image_ft, zs_image_embedd.cuda(),
@@ -439,6 +475,18 @@ class PromptMeo(TrainerX):
         self.num_source_domains = dm.num_source_domains
         self.lab2cname = dm.lab2cname  # dict {label: classname}
         self.dm = dm
+        
+    def parse_batch_train(self, batch):
+        input = batch["img"]
+        label = batch["label"]
+        input_stylized_embedding = batch["stylized_embedding"]
+        input_tokenized_base_text = batch["tokenized_base_text"]
+        input = input.to(self.device)
+        label = label.to(self.device)
+        input_stylized_embedding = input_stylized_embedding.to(self.device)
+        input_tokenized_base_text = input_tokenized_base_text.to(self.device)
+        return input, label, input_stylized_embedding, input_tokenized_base_text
+
 
     def state_dict_weighting(self, main_dict, weightage, prompt_only=False):
         # Average all parameters
@@ -463,17 +511,6 @@ class PromptMeo(TrainerX):
     def get_gauss(self, mu, sigma):
         gauss = lambda x: (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mu) / sigma) ** 2)
         return gauss
-
-    def parse_batch_train(self, batch):
-        input = batch["img"]
-        label = batch["label"]
-        input_stylized_embedding = batch["stylized_embedding"]
-        input_tokenized_base_text = batch["tokenized_base_text"]
-        input = input.to(self.device)
-        label = label.to(self.device)
-        input_stylized_embedding = input_stylized_embedding.to(self.device)
-        input_tokenized_base_text = input_tokenized_base_text.to(self.device)
-        return input, label, input_stylized_embedding, input_tokenized_base_text
 
     def load_model(self, directory, epoch=None):
         if not directory:
@@ -521,4 +558,15 @@ class PromptMeo(TrainerX):
         self.num_classes = len(classnames)
         assert self.cfg.STYLE_GENERATOR.NAME in globals()
         self.style_generator = globals()[self.cfg.STYLE_GENERATOR.NAME](self.cfg, classnames, #self.cfg.STYLE_GENERATOR.NAME = PromptStylerGenerator
-                                                                        self.model.embedlayers.backbone, self.device)
+                                                                        self.embed_layers.backbone, self.device)
+        
+        #self.style_generator = 
+        
+    def train(self):
+        self.before_train()
+        self.style_generator.reinit_style()
+        for self.epoch in range(self.start_epoch, self.max_epoch):
+            self.run_epoch()
+            #if self.epoch % 2 == 0:
+            #    self.after_epoch()
+        self.after_train()

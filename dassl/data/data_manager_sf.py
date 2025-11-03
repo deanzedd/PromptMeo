@@ -2,6 +2,9 @@ import torch
 import torchvision.transforms as T
 from tabulate import tabulate
 from torch.utils.data import Dataset as TorchDataset
+from torch import nn as nn
+import clip
+
 
 from dassl.utils import read_image
 
@@ -64,6 +67,14 @@ class DataManager_sf:
         # Load dataset
         dataset = build_dataset_sf(cfg, train_data)
         self.train_data = train_data
+        
+        # Build transform
+        if custom_tfm_train is None:
+            tfm_train = build_transform(cfg, is_train=True)
+        else:
+            print("* Using custom transform for training")
+            tfm_train = custom_tfm_train
+        
         if custom_tfm_test is None:
             tfm_test = build_transform(cfg, is_train=False)
         else:
@@ -79,12 +90,54 @@ class DataManager_sf:
             batch_size=cfg.DATALOADER.TRAIN_X.BATCH_SIZE,
             n_domain=cfg.DATALOADER.TRAIN_X.N_DOMAIN,
             n_ins=cfg.DATALOADER.TRAIN_X.N_INS,
+            tfm=tfm_train,
             is_train=True,
             dataset_wrapper=DatasetWrapper_train_sf,
             train_data=self.train_data,
             num_workers=cfg.DATALOADER.NUM_WORKERS
         )
 
+        # Build train_loader_u
+        train_loader_u = None
+        if dataset.train_u:
+            sampler_type_ = cfg.DATALOADER.TRAIN_U.SAMPLER
+            batch_size_ = cfg.DATALOADER.TRAIN_U.BATCH_SIZE
+            n_domain_ = cfg.DATALOADER.TRAIN_U.N_DOMAIN
+            n_ins_ = cfg.DATALOADER.TRAIN_U.N_INS
+
+            if cfg.DATALOADER.TRAIN_U.SAME_AS_X:
+                sampler_type_ = cfg.DATALOADER.TRAIN_X.SAMPLER
+                batch_size_ = cfg.DATALOADER.TRAIN_X.BATCH_SIZE
+                n_domain_ = cfg.DATALOADER.TRAIN_X.N_DOMAIN
+                n_ins_ = cfg.DATALOADER.TRAIN_X.N_INS
+
+            train_loader_u = build_data_loader(
+                cfg,
+                sampler_type=sampler_type_,
+                data_source=dataset.train_u,
+                batch_size=batch_size_,
+                n_domain=n_domain_,
+                n_ins=n_ins_,
+                tfm=tfm_train,
+                is_train=True,
+                dataset_wrapper=DatasetWrapper_train_sf,
+                train_data=self.train_data
+            )
+
+        # Build val_loader
+        val_loader = None
+        if dataset.val:
+            val_loader = build_data_loader(
+                cfg,
+                sampler_type=cfg.DATALOADER.TEST.SAMPLER,
+                data_source=dataset.val,
+                batch_size=cfg.DATALOADER.TEST.BATCH_SIZE,
+                tfm=tfm_test,
+                is_train=False,
+                dataset_wrapper=DatasetWrapper_train_sf,
+                train_data=self.train_data
+            )
+        
         test_loader_list = []
         # Build test_loader
         for dataset_domain in dataset.test:
@@ -95,8 +148,9 @@ class DataManager_sf:
                 batch_size=cfg.DATALOADER.TEST.BATCH_SIZE,
                 tfm=tfm_test,
                 is_train=False,
-                dataset_wrapper=dataset_wrapper,
-                num_workers=test_num_worker
+                dataset_wrapper=DatasetWrapper_train_sf,
+                num_workers=test_num_worker,
+                train_data=self.train_data
             )
             test_loader_list.append(test_loader)
 
@@ -108,8 +162,8 @@ class DataManager_sf:
         # Dataset and data-loaders
         self.dataset = dataset
         self.train_loader_x = train_loader_x
-        self.train_loader_u = None
-        self.val_loader = None
+        self.train_loader_u = train_loader_u
+        self.val_loader = val_loader
         self.test_loader = test_loader_list
 
         if cfg.VERBOSE:
@@ -225,11 +279,79 @@ class DatasetWrapper(TorchDataset):
 
         return img
 
+class BaseStyleGenerator(nn.Module):
+    def __init__(self, cfg, classnames, clip_model, device):
+        super().__init__()
+        # a {} style of a {cls}
+        self.classnames = classnames
+        self.device = device
+        self.cfg = cfg
+        self.n_cls = len(classnames)
+        self.n_style = cfg.TRAINER.NUM_STYLES
+        self.clip_model = clip_model
+        self.enable_diverse = cfg.STYLE_GENERATOR.ENABLE_DIVERSE
+        # Xây dựng vectơ đặc trưng cơ bản
+        # Xây dựng một vectơ phong cách cơ bản cho mỗi loại
+        base_text_list = ["a random style of a " + s for s in classnames]
+
+        # position_offset = [0 if len(j.split("_")) == 1 else 2 for j in self.classnames]
+        self.style_position = [1 for _ in self.classnames]
+        # 基础的风格向量
+        self.tokenized_base_text = torch.cat([clip.tokenize(p) for p in base_text_list]).to(self.device)
+        self.base_embedding = clip_model.token_embedding(self.tokenized_base_text).to("cpu")  # 将基础风格的token转为embedding
+        self.style_embedding = []  # 保存k个风格
+        self.stylized_base_text_encoder_out = []  # 保存只包含k个风格的文本（没有类别）
+
+    def style_generator(self, embedding_dim=512):
+        raise NotImplementedError("You must implement this function!")
+
+    def get_stylized_embedding(self, single_base_embedding, style_position, style_id):
+        assert style_id < len(self.style_embedding), "Style id is outside the length of the style list!"
+        new_style_embedding = single_base_embedding.clone()
+        new_style_embedding[0, style_position:style_position + 1, :] = self.style_embedding[style_id].clone()
+        return new_style_embedding
+
+    def _init_stylized_text(self, base_text=None, style_position=0):
+        if base_text is None:
+            base_text = "X-like style"
+            style_position = 1
+        base_text_list = [base_text] * self.n_style
+        tokenized_base_text = torch.cat([clip.tokenize(p) for p in base_text_list]).to(self.device)
+        stylized_base_text_embedding = self.clip_model.token_embedding(tokenized_base_text)  # 将基础风格的token转为embedding
+        stylized_base_text_embedding[:, style_position:style_position + 1, :] = self.style_embedding
+        self.stylized_base_text_encoder_out = self.clip_model.forward_text(stylized_base_text_embedding,
+                                                                           tokenized_base_text).to("cpu")
+
+    def reinit_style(self, embedding_dim=512):
+        self.generate_style_embedding(embedding_dim)
+        self._init_stylized_text()
+
+    @torch.no_grad()
+    def generate_style_embedding(self, embedding_dim=512):
+        self.style_embedding = torch.cat([self.style_generator(embedding_dim) for _ in range(self.n_style)]).unsqueeze(
+            1).to("cpu")
+
+    def train_data(self):
+        '''
+        text_int:x
+        text_init_tokenized:t_x
+        "style_prompt":n_style种随机风格
+        '''
+        train_data = {"classnames": self.classnames,
+                      "base_embedding": self.base_embedding.to("cpu"),
+                      "tokenized_base_text": self.tokenized_base_text.to("cpu"),
+                      "style_generator": self,
+                      "n_cls": len(self.classnames),
+                      "n_style": self.cfg.TRAINER.NUM_STYLES,
+                      "style_position": self.style_position,
+                      }
+        return train_data
+
 
 class DatasetWrapper_train_sf(TorchDataset):
 
     def __init__(self, cfg, data_source, transform=None, is_train=False, traindata=None):
-        from ...trainers.style_generator import BaseStyleGenerator
+        #from ..trainers.style_generator import BaseStyleGenerator
 
         self.cfg = cfg
         self.data_source = data_source
