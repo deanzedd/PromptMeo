@@ -11,6 +11,7 @@ from dassl.engine import TRAINER_REGISTRY, TrainerX
 from dassl.utils import load_pretrained_weights, load_checkpoint
 from dassl.optim import build_optimizer, build_lr_scheduler
 from dassl.data import DataManager, DataManager_sf
+from dassl.evaluation import build_evaluator
 from clip import clip
 from clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
 from .imagenet_templates import IMAGENET_TEMPLATES # cần thay cái này thành các style template của mình
@@ -313,6 +314,9 @@ class PromptMeo(TrainerX):
         self.build_model()
         self.clip_model = load_clip_to_cpu(self.cfg)
         self.clip_model_cuda = load_clip_to_cpu(self.cfg).cuda()
+        
+        self.evaluator = build_evaluator(cfg, lab2cname=self.lab2cname)
+        self.best_result = -np.inf
         
     
     def check_cfg(self, cfg):
@@ -659,8 +663,8 @@ class PromptMeo(TrainerX):
         self.style_generator.reinit_style()
         for self.epoch in range(self.start_epoch, self.max_epoch):
             self.run_epoch()
-            #if self.epoch % 2 == 0:
-            #    self.after_epoch()
+            if self.epoch % 2 == 0:
+                self.after_epoch()
         self.after_train()
         
     def get_stylized_embedding(self, single_base_embedding, style_position, style_id):
