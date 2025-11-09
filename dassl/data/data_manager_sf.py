@@ -148,12 +148,11 @@ class DataManager_sf:
                 batch_size=cfg.DATALOADER.TEST.BATCH_SIZE,
                 tfm=tfm_test,
                 is_train=False,
-                dataset_wrapper=DatasetWrapper_train_sf,
-                num_workers=test_num_worker,
-                train_data=self.train_data
+                dataset_wrapper=dataset_wrapper,
+                num_workers=test_num_worker
             )
             test_loader_list.append(test_loader)
-
+        
         # Attributes
         self._num_classes = dataset.num_classes
         self._num_source_domains = len(cfg.DATASET.SOURCE_DOMAINS)

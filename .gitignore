@@ -1,1 +1,14 @@
 /output
+/DATA
+
+
+__pycache__/
+# Bỏ qua thư mục __pycache__ ở bất kỳ đâu trong dự án
+__pycache__/
+
+# Bỏ qua các tệp byte-compiled (.pyc) ở bất kỳ đâu
+*.pyc
+
+# Bỏ qua các tệp log, data tạm thời
+*.log
+*.sqlite3

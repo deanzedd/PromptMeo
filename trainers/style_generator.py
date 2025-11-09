@@ -130,7 +130,7 @@ class PromptStylerGenerator(BaseStyleGenerator):
         # 
         #self.weight_save_path = os.path.join(cfg.TRAINER.PROMPTSTYLER.WEIGHT_DIR_PATH,
         #                                     cfg.TRAINER.PROMPTSTYLER.CHECK_POINT_NAME)
-        self.weight_save_path = os.path.join("/mnt/disk1/theanh28/DPStyler/PromptStyler/output/pacs/vitb16_clip/PS_re_train_style/seed1/checkpoint/model.pth")
+        self.weight_save_path = os.path.join("/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/pacs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth")
         self.load_weight()
 
     def reinit_style(self, embedding_dim=512):

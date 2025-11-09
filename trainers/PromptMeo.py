@@ -1,4 +1,6 @@
 import copy
+import time
+import datetime
 import os.path as osp
 import numpy as np
 import torch
@@ -16,6 +18,7 @@ from clip import clip
 from clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
 from .imagenet_templates import IMAGENET_TEMPLATES # cần thay cái này thành các style template của mình
 import os
+from tqdm import tqdm
 from .style_generator import RandomStyleGenerator, BaseStyleGenerator, MixStyleGenerator, \
     RandomMixStyleGenerator, PromptStylerGenerator
 
@@ -316,7 +319,7 @@ class PromptMeo(TrainerX):
         self.clip_model_cuda = load_clip_to_cpu(self.cfg).cuda()
         
         self.evaluator = build_evaluator(cfg, lab2cname=self.lab2cname)
-        self.best_result = -np.inf
+        self.best_result = ([0, 0, 0, 0], 0)
         
     
     def check_cfg(self, cfg):
@@ -335,7 +338,7 @@ class PromptMeo(TrainerX):
         cfg = self.cfg
         classnames = self.dm.dataset.classnames
         # chỉnh lại đường dẫn chuẩn
-        self.weight_save_path = "/mnt/disk1/theanh28/DPStyler/PromptStyler/output/pacs/vitb16_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+        self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/pacs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
         #os.path.join(cfg.TRAINER.PROMPTMEO.WEIGHT_DIR_PATH,
         #                                     cfg.TRAINER.PROMPTMEO.CHECK_POINT_NAME)
         
@@ -673,3 +676,54 @@ class PromptMeo(TrainerX):
         #new_style_embedding[:, style_position:style_position + 1, :] = self.style_embedding[style_id].clone()
         new_style_embedding[0, style_position:style_position + 1, :] = self.style_embedding[style_id].clone()
         return new_style_embedding
+    
+    @torch.no_grad()
+    def test(self, split=None):
+        """A generic testing pipeline."""
+        self.set_model_mode("eval")
+        self.evaluator.reset()
+        result = []
+        if split is None:
+            split = self.cfg.TEST.SPLIT
+
+        if split == "val" and self.val_loader is not None:
+            data_loader = self.val_loader
+        else:
+            split = "test"  # in case val_loader is None
+            data_loader = self.test_loader
+        for data_loader_domain in data_loader:
+            print(f"Evaluate on the *{split}* set")
+            for batch_idx, batch in enumerate(tqdm(data_loader_domain)):
+                input, label = self.parse_batch_test(batch)
+                output = self.model_inference(input)
+                self.evaluator.process(output, label)
+
+            results = self.evaluator.evaluate()
+
+            for k, v in results.items():
+                tag = f"{split}/{k}"
+                self.write_scalar(tag, v, self.epoch)
+            result.append(list(results.values())[0])
+            self.evaluator.reset()
+        mean_acc = np.mean(result)
+        is_best = False
+        if self.best_result[-1] < mean_acc:
+            self.best_result = (result, mean_acc)
+            is_best = True
+        return result, is_best
+
+
+    def after_epoch(self):
+
+        result, is_best = self.test()
+        if is_best:
+            self.save_model(
+                self.epoch,
+                self.output_dir,
+                val_result=result,
+                model_name="model-best.pth.tar"
+            )
+        # Show elapsed time
+        elapsed = round(time.time() - self.time_start)
+        elapsed = str(datetime.timedelta(seconds=elapsed))
+        print(f"Elapsed: {elapsed}")
