@@ -1,13 +1,14 @@
 #!/bin/bash
-
-DATA=""
+#set -x
+DATA="/home/aidev/dungnt/thanh/PromptMeo/DATA"
 TRAINER=PromptMeo
 #CFG=vit_b16_ep50_ctxv1
 DATASET=PACS_SF
-CFG=vit_b16_c2_ep20_batch4_4+4ctx_cross_datasets  # config file
-
+CFG=20epoch  # config file
+echo $SHELL
+echo $BASH_VERSION
 #/mnt/disk1/theanh28/PromptMeo/configs/trainers/PromptMeo/vit_b16_c2_ep20_batch4_4+4ctx_cross_datasets.yaml
-# bash scripts/PromptMeo/test.sh
+# bash scripts/PromptMeo/PACS_MULTI.sh
 # bash scripts/promptsrc/Multi_officeDG.sh 
 # bash scripts/promptsrc/Single_PACS.sh PACS vit_b16_c2_ep20_batch4_4+4ctx_cross_datasets
 # CUDA_VISIBLE_DEVICES=3

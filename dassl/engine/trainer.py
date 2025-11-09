@@ -401,7 +401,7 @@ class SimpleTrainer(TrainerBase):
 
     def after_train(self):
         print("Finish training")
-
+        print("Best acc result: ", self.best_result)
         do_test = not self.cfg.TEST.NO_TEST
         if do_test:
             if self.cfg.TEST.FINAL_MODEL == "best_val":
