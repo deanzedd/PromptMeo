@@ -338,7 +338,14 @@ class PromptMeo(TrainerX):
         cfg = self.cfg
         classnames = self.dm.dataset.classnames
         # chỉnh lại đường dẫn chuẩn
-        self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/pacs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+        if (cfg.DATASET.NAME=="PACS_SF"):
+            self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/pacs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+        elif (cfg.DATASET.NAME=="VLCS_SF"):
+            self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/vlcs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+        elif (cfg.DATASET.NAME=="OfficeHomeDG_SF"):
+            self.weight_save_path = None
+        elif (cfg.DATASET.NAME=="DomainNet_SF"):
+            self.weight_save_path = None
         #os.path.join(cfg.TRAINER.PROMPTMEO.WEIGHT_DIR_PATH,
         #                                     cfg.TRAINER.PROMPTMEO.CHECK_POINT_NAME)
         
