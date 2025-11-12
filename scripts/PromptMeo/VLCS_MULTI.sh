@@ -45,7 +45,7 @@ do
         DIR=output/base/${DATASET}/${TRAINER}/${CFG}/seed${SEED}/Multi_domain/${DOMAIN}
         if [ -d "$DIR" ]; then
             echo "Results are available in ${DIR}. Resuming..."
-            CUDA_VISIBLE_DEVICES=0 python3 -m train \
+            CUDA_VISIBLE_DEVICES=1 python3 -m train \
             --root ${DATA} \
             --seed ${SEED} \
             --trainer ${TRAINER} \
@@ -57,7 +57,7 @@ do
             --num_styles 80 --txts_path dassl/txts
         else
             echo "Run this job and save the output to ${DIR}"
-            CUDA_VISIBLE_DEVICES=0 python3 -m train \
+            CUDA_VISIBLE_DEVICES=1 python3 -m train \
             --root ${DATA} \
             --seed ${SEED} \
             --trainer ${TRAINER} \
