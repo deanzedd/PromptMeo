@@ -71,8 +71,6 @@ class VLCS(DatasetBase):
             return items_
 
         items = []
-        #a = split
-        #breakpoint()
         for domain, dname in enumerate(input_domains):
             if split == "all":
                 train_dir = osp.join(self.dataset_dir, dname, "train")
@@ -81,18 +79,11 @@ class VLCS(DatasetBase):
                 impath_label_list += _load_data_from_directory(val_dir)
             else:
                 split_dir = osp.join(self.dataset_dir, dname, split)
-                #a= self.dataset_dir
-                #b = split_dir
-                #breakpoint()
+                
                 impath_label_list = _load_data_from_directory(split_dir)
 
             for impath, label in impath_label_list:
-                
-                #a = impath
-                #b = impath.split("\\")[-2].lower()
-                #breakpoint()
                 class_name = impath.split("/")[-2].lower()
-                #class_name = impath.split("\\")[-2].lower()
                 item = Datum(
                     impath=impath,
                     label=label,

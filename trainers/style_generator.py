@@ -130,7 +130,15 @@ class PromptStylerGenerator(BaseStyleGenerator):
         # 
         #self.weight_save_path = os.path.join(cfg.TRAINER.PROMPTSTYLER.WEIGHT_DIR_PATH,
         #                                     cfg.TRAINER.PROMPTSTYLER.CHECK_POINT_NAME)
-        self.weight_save_path = os.path.join("/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/pacs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth")
+        #self.weight_save_path = os.path.join("/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/pacs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth")
+        if (cfg.DATASET.NAME=="PACS_SF"):
+            self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/pacs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+        elif (cfg.DATASET.NAME=="VLCS_SF"):
+            self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/vlcs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+        elif (cfg.DATASET.NAME=="OfficeHomeDG_SF"):
+            self.weight_save_path = None
+        elif (cfg.DATASET.NAME=="DomainNet_SF"):
+            self.weight_save_path = None
         self.load_weight()
 
     def reinit_style(self, embedding_dim=512):
