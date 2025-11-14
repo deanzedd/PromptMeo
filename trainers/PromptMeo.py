@@ -343,7 +343,12 @@ class PromptMeo(TrainerX):
         elif (cfg.DATASET.NAME=="VLCS_SF"):
             self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/vlcs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
         elif (cfg.DATASET.NAME=="OfficeHomeDG_SF"):
-            self.weight_save_path = None
+            if (cfg.SEED == 1):
+                self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/office_home_dg/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+            elif (cfg.SEED == 2):
+                self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/office_home_dg/resnet50_clip/PS_re_train_style/seed2/checkpoint/model.pth"
+            elif (cfg.SEED == 3):
+                self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/office_home_dg/resnet50_clip/PS_re_train_style/seed3/checkpoint/model.pth"
         elif (cfg.DATASET.NAME=="DomainNet_SF"):
             self.weight_save_path = None
         #os.path.join(cfg.TRAINER.PROMPTMEO.WEIGHT_DIR_PATH,
@@ -722,7 +727,7 @@ class PromptMeo(TrainerX):
 
     def after_epoch(self):
 
-        result, is_best = self.test()
+        result, is_best = self.test("val")
         if is_best:
             self.save_model(
                 self.epoch,
@@ -730,6 +735,7 @@ class PromptMeo(TrainerX):
                 val_result=result,
                 model_name="model-best.pth.tar"
             )
+        result, is_best = self.test("test")
         # Show elapsed time
         elapsed = round(time.time() - self.time_start)
         elapsed = str(datetime.timedelta(seconds=elapsed))

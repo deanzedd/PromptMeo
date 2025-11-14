@@ -4,7 +4,7 @@ DATA="/home/aidev/dungnt/thanh/PromptMeo/DATA"
 TRAINER=PromptMeo
 #CFG=vit_b16_ep50_ctxv1
 DATASET=VLCS_SF
-CFG=20epochs_32  # config file
+CFG=20epoch  # config file
 #echo $SHELL
 #echo $BASH_VERSION
 #/mnt/disk1/theanh28/PromptMeo/configs/trainers/PromptMeo/vit_b16_c2_ep20_batch4_4+4ctx_cross_datasets.yaml
@@ -20,7 +20,7 @@ elif [ "$DATASET" = "PACS_SF" ]; then
 elif [ "$DATASET" = "VLCS" ]; then
   ALL_DOMAIN=('caltech' 'labelme' 'pascal' 'sun')
 elif [ "$DATASET" = "VLCS_SF" ]; then
-  ALL_DOMAIN=('caltech' 'labelme' 'pascal' 'sun')
+  ALL_DOMAIN=('labelme' 'pascal' 'sun' 'caltech')
 elif [ "$DATASET" = "OfficeHomeDG" ]; then
   ALL_DOMAIN=('art' 'clipart' 'product' 'real_world')
 fi
@@ -40,7 +40,7 @@ do
     # Nối các phần tử của mảng thành một chuỗi, phân cách bằng dấu phẩy
     IFS=, TARGET_DOMAINS_STR="${TARGET_DOMAINS_ARRAY[*]}"
     
-    for SEED in 1
+    for SEED in  2
     do
         DIR=output/base/${DATASET}/${TRAINER}/${CFG}/seed${SEED}/Multi_domain/${DOMAIN}
         if [ -d "$DIR" ]; then

@@ -39,9 +39,12 @@ class VLCS_SF(DatasetBase):
         test_datasets = []
         for domain in cfg.DATASET.TARGET_DOMAINS:
             test_datasets.append(self._read_data([domain], "test"))
+        val_datasets = []
+        for domain in cfg.DATASET.SOURCE_DOMAINS:
+            val_datasets.append(self._read_data([domain], "crossval"))
         train = self._read_train_data(train_data, cfg.DATASET.SOURCE_DOMAINS, "train")
 
-        super().__init__(train_x=train, test=test_datasets)
+        super().__init__(train_x=train, val=val_datasets, test=test_datasets)
 
     def _read_train_data(self, train_data, input_domains, split):
         items = []
@@ -74,7 +77,7 @@ class VLCS_SF(DatasetBase):
                     actual_domain_folder = 'SUN'
                 train_dir = osp.join(self.dataset_dir, actual_domain_folder, "train")
                 impath_label_list = _load_data_from_directory(train_dir)
-                val_dir = osp.join(self.dataset_dir, actual_domain_folder, "val")
+                val_dir = osp.join(self.dataset_dir, actual_domain_folder, "crossval")
                 impath_label_list += _load_data_from_directory(val_dir)
             else:
                 if dname.lower() == 'caltech':
@@ -170,7 +173,7 @@ class VLCS_SF(DatasetBase):
                     actual_domain_folder = 'SUN'
                 train_dir = osp.join(self.dataset_dir, actual_domain_folder, "train")
                 impath_label_list = _load_data_from_directory(train_dir)
-                val_dir = osp.join(self.dataset_dir, actual_domain_folder, "val")
+                val_dir = osp.join(self.dataset_dir, actual_domain_folder, "crossval")
                 impath_label_list += _load_data_from_directory(val_dir)
             else:
                 if dname.lower() == 'caltech':

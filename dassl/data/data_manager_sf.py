@@ -138,6 +138,20 @@ class DataManager_sf:
                 train_data=self.train_data
             )
         
+        val_loader_list = []
+        for dataset_domain in dataset.val:
+            val_loader = build_data_loader(
+                cfg,
+                sampler_type=cfg.DATALOADER.TEST.SAMPLER,
+                data_source=dataset_domain,
+                batch_size=cfg.DATALOADER.TEST.BATCH_SIZE,
+                tfm=tfm_test,
+                is_train=False,
+                dataset_wrapper=dataset_wrapper,
+                num_workers=test_num_worker
+            )
+            val_loader_list.append(val_loader)
+        
         test_loader_list = []
         # Build test_loader
         for dataset_domain in dataset.test:
@@ -162,7 +176,7 @@ class DataManager_sf:
         self.dataset = dataset
         self.train_loader_x = train_loader_x
         self.train_loader_u = train_loader_u
-        self.val_loader = val_loader
+        self.val_loader = val_loader_list
         self.test_loader = test_loader_list
 
         if cfg.VERBOSE:

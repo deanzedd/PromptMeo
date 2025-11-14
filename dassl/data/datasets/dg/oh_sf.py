@@ -4,7 +4,6 @@ from ..build import DATASET_REGISTRY
 from dassl.utils import listdir_nohidden
 from .digits_dg import DigitsDG
 from ..base_dataset import DatasetBase, Datum_sf, Datum
-from .digits_dg import DigitsDG
 
 @DATASET_REGISTRY.register()
 class OfficeHomeDG_SF(DatasetBase):
@@ -38,8 +37,11 @@ class OfficeHomeDG_SF(DatasetBase):
         )
 
         test_datasets = []
+        val_datasets = []
         for domain in cfg.DATASET.TARGET_DOMAINS:
-            test_datasets.append(self._read_data([domain], "test"))
+            test_datasets.append(self._read_data([domain], "all"))
+        for domain in cfg.DATASET.SOURCE_DOMAINS:
+            val_datasets.append(self._read_data([domain], "val"))
         #train = self._read_train_data(train_data, cfg.DATASET.SOURCE_DOMAINS, "train")
 
         '''
@@ -54,8 +56,8 @@ class OfficeHomeDG_SF(DatasetBase):
         )
         '''
         train = self._read_train_data(train_data, cfg.DATASET.SOURCE_DOMAINS, "train")
-        
-        super().__init__(train_x=train, val=val, test=test)
+        #val = self._read_data(cfg.DATASET.SOURCE_DOMAINS, "val")
+        super().__init__(train_x=train, val = val_datasets, test=test_datasets)
         
     def _read_train_data(self, train_data, input_domains, split):
         items = []

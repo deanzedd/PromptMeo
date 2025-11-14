@@ -136,7 +136,13 @@ class PromptStylerGenerator(BaseStyleGenerator):
         elif (cfg.DATASET.NAME=="VLCS_SF"):
             self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/vlcs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
         elif (cfg.DATASET.NAME=="OfficeHomeDG_SF"):
-            self.weight_save_path = None
+            if (cfg.SEED == 1):
+                self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/office_home_dg/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+            elif (cfg.SEED == 2):
+                self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/office_home_dg/resnet50_clip/PS_re_train_style/seed2/checkpoint/model.pth"
+            elif (cfg.SEED == 3):
+                self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/office_home_dg/resnet50_clip/PS_re_train_style/seed3/checkpoint/model.pth"
+
         elif (cfg.DATASET.NAME=="DomainNet_SF"):
             self.weight_save_path = None
         self.load_weight()
