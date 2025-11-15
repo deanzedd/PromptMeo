@@ -3,12 +3,12 @@
 DATA="/home/aidev/dungnt/thanh/PromptMeo/DATA"
 TRAINER=PromptMeo
 #CFG=vit_b16_ep50_ctxv1
-DATASET=VLCS_SF
-CFG=20epochs_32  # config file
+DATASET=OfficeHomeDG_SF
+CFG=20epochreal  # config file
 #echo $SHELL
 #echo $BASH_VERSION
 #/mnt/disk1/theanh28/PromptMeo/configs/trainers/PromptMeo/vit_b16_c2_ep20_batch4_4+4ctx_cross_datasets.yaml
-# bash scripts/PromptMeo/VLCS_MULTI.sh
+# bash scripts/PromptMeo/OH_Multi.sh
 # bash scripts/promptsrc/Multi_officeDG.sh 
 # bash scripts/promptsrc/Single_PACS.sh PACS vit_b16_c2_ep20_batch4_4+4ctx_cross_datasets
 # CUDA_VISIBLE_DEVICES=3
@@ -22,6 +22,8 @@ elif [ "$DATASET" = "VLCS" ]; then
 elif [ "$DATASET" = "VLCS_SF" ]; then
   ALL_DOMAIN=('caltech' 'labelme' 'pascal' 'sun')
 elif [ "$DATASET" = "OfficeHomeDG" ]; then
+  ALL_DOMAIN=('art' 'clipart' 'product' 'real_world')
+elif [ "$DATASET" = "OfficeHomeDG_SF" ]; then
   ALL_DOMAIN=('art' 'clipart' 'product' 'real_world')
 fi
 
@@ -45,7 +47,7 @@ do
         DIR=output/base/${DATASET}/${TRAINER}/${CFG}/seed${SEED}/Multi_domain/${DOMAIN}
         if [ -d "$DIR" ]; then
             echo "Results are available in ${DIR}. Resuming..."
-            CUDA_VISIBLE_DEVICES=1 python3 -m train \
+            CUDA_VISIBLE_DEVICES=0 python3 -m train \
             --root ${DATA} \
             --seed ${SEED} \
             --trainer ${TRAINER} \
@@ -57,7 +59,7 @@ do
             --num_styles 80 --txts_path dassl/txts
         else
             echo "Run this job and save the output to ${DIR}"
-            CUDA_VISIBLE_DEVICES=1 python3 -m train \
+            CUDA_VISIBLE_DEVICES=0 python3 -m train \
             --root ${DATA} \
             --seed ${SEED} \
             --trainer ${TRAINER} \

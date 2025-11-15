@@ -34,10 +34,13 @@ class PACS_SF(DatasetBase):
         )
         test_datasets = []
         for domain in cfg.DATASET.TARGET_DOMAINS:
-            test_datasets.append(self._read_data([domain], "test"))
+            test_datasets.append(self._read_data([domain], "all"))
+        val_datasets = []
+        for domain in cfg.DATASET.SOURCE_DOMAINS:
+            val_datasets.append(self._read_data([domain], "crossval"))
         train = self._read_train_data(train_data, cfg.DATASET.SOURCE_DOMAINS, "train")
 
-        super().__init__(train_x=train, test=test_datasets)
+        super().__init__(train_x=train, val=val_datasets, test=test_datasets)
 
     def _read_train_data(self, train_data, input_domains, split):
         items = []
