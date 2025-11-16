@@ -14,4 +14,19 @@ Please refer to the [TRAIN.md](docs/TRAIN.md) for detailed instructions on train
 
 
 # Làm theo các bước sau:
-
+## Create Dockerfile
+## build Image containers
+```bash
+sudo docker build -t promptmeo_rtx5090 .
+```
+## Run containers
+```bash
+sudo docker run --gpus all -it --rm   --ipc=host   --name promptmeo_runner   -v $(pwd):/workspace
+/PromptMeo   promptmeo_rtx5090
+```
+sudo docker run --gpus all -it --rm \
+  --ipc=host \
+  -e NVIDIA_DISABLE_REQUIRE=1 \
+  -e TORCH_CUDA_ARCH_LIST="9.0" \
+  -v $(pwd):/workspace/PromptMeo \
+  promptmeo_rtx5090

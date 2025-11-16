@@ -10,9 +10,9 @@ tb-nightly
 future
 scipy
 scikit-learn
-tqdm
-ftfy
-regex
+#tqdm
+#ftfy
+#regex
 wilds==1.2.2
 tabulate
 

@@ -33,7 +33,12 @@ class BaseStyleGenerator(nn.Module):
         self.style_position = [1 for _ in self.classnames]
         # 基础的风格向量
         self.tokenized_base_text = torch.cat([clip.tokenize(p) for p in base_text_list]).to(self.device) 
-        self.base_embedding = clip_model.token_embedding(self.tokenized_base_text).to("cpu")  # 将基础风格的token转为embedding
+        clip_model = clip_model.to("cpu") 
+        self.tokenized_base_text = self.tokenized_base_text.to("cpu")
+
+        with torch.no_grad():
+            self.base_embedding = clip_model.token_embedding(self.tokenized_base_text)
+        #self.base_embedding = clip_model.token_embedding(self.tokenized_base_text).to("cpu")  # 将基础风格的token转为embedding
         self.style_embedding = []  # 保存k个风格
         self.stylized_base_text_encoder_out = []  # 保存只包含k个风格的文本（没有类别）
 
@@ -132,17 +137,30 @@ class PromptStylerGenerator(BaseStyleGenerator):
         #                                     cfg.TRAINER.PROMPTSTYLER.CHECK_POINT_NAME)
         #self.weight_save_path = os.path.join("/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/pacs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth")
         if (cfg.DATASET.NAME=="PACS_SF"):
-            self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/pacs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+            if (cfg.SEED == 1):
+                self.weight_save_path = "./DPStyler/PromptStyler/output/pacs/vitb16_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+            elif (cfg.SEED == 2):
+                self.weight_save_path = "./DPStyler/PromptStyler/output/pacs/vitb16_clip/PS_re_train_style/seed2/checkpoint/model.pth"
+            elif (cfg.SEED == 3):
+                self.weight_save_path = "./DPStyler/PromptStyler/output/pacs/vitb16_clip/PS_re_train_style/seed3/checkpoint/model.pth"
+
+            #self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/pacs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
         elif (cfg.DATASET.NAME=="VLCS_SF"):
-            self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/vlcs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+            if (cfg.SEED == 1):
+                self.weight_save_path = "./DPStyler/PromptStyler/output/vlcs/vitb16_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+            elif (cfg.SEED == 2):
+                self.weight_save_path = "./DPStyler/PromptStyler/output/vlcs/vitb16_clip/PS_re_train_style/seed2/checkpoint/model.pth"
+            elif (cfg.SEED == 3):
+                self.weight_save_path = "./DPStyler/PromptStyler/output/vlcs/vitb16_clip/PS_re_train_style/seed3/checkpoint/model.pth"
+
+            #self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/vlcs/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
         elif (cfg.DATASET.NAME=="OfficeHomeDG_SF"):
             if (cfg.SEED == 1):
-                self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/office_home_dg/resnet50_clip/PS_re_train_style/seed1/checkpoint/model.pth"
+                self.weight_save_path = "./DPStyler/PromptStyler/output/office_home_dg/vitb16_clip/PS_re_train_style/seed1/checkpoint/model.pth"
             elif (cfg.SEED == 2):
-                self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/office_home_dg/resnet50_clip/PS_re_train_style/seed2/checkpoint/model.pth"
+                self.weight_save_path = "./DPStyler/PromptStyler/output/office_home_dg/vitb16_clip/PS_re_train_style/seed2/checkpoint/model.pth"
             elif (cfg.SEED == 3):
-                self.weight_save_path = "/home/aidev/dungnt/thanh/DPStyler/PromptStyler/output/office_home_dg/resnet50_clip/PS_re_train_style/seed3/checkpoint/model.pth"
-
+                self.weight_save_path = "./DPStyler/PromptStyler/output/office_home_dg/vitb16_clip/PS_re_train_style/seed3/checkpoint/model.pth"
         elif (cfg.DATASET.NAME=="DomainNet_SF"):
             self.weight_save_path = None
         self.load_weight()

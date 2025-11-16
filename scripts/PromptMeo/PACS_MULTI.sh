@@ -1,10 +1,10 @@
 #!/bin/bash
 #set -x
-DATA="/home/aidev/dungnt/thanh/PromptMeo/DATA"
+DATA="./DATA"
 TRAINER=PromptMeo
 #CFG=vit_b16_ep50_ctxv1
 DATASET=PACS_SF
-CFG=20epoch  # config file
+CFG=20epoch_32  # config file
 #echo $SHELL
 #echo $BASH_VERSION
 #/mnt/disk1/theanh28/PromptMeo/configs/trainers/PromptMeo/vit_b16_c2_ep20_batch4_4+4ctx_cross_datasets.yaml
@@ -38,12 +38,12 @@ do
     # Nối các phần tử của mảng thành một chuỗi, phân cách bằng dấu phẩy
     IFS=, TARGET_DOMAINS_STR="${TARGET_DOMAINS_ARRAY[*]}"
     
-    for SEED in 2
+    for SEED in 1 2 3
     do
         DIR=output/base/${DATASET}/${TRAINER}/${CFG}/seed${SEED}/Multi_domain/${DOMAIN}
         if [ -d "$DIR" ]; then
             echo "Results are available in ${DIR}. Resuming..."
-            CUDA_VISIBLE_DEVICES=0 python3 -m train \
+            TORCH_CUDA_ARCH_LIST="9.0" python train.py \
             --root ${DATA} \
             --seed ${SEED} \
             --trainer ${TRAINER} \
@@ -55,7 +55,7 @@ do
             --num_styles 80 --txts_path dassl/txts
         else
             echo "Run this job and save the output to ${DIR}"
-            CUDA_VISIBLE_DEVICES=0 python3 -m train \
+            TORCH_CUDA_ARCH_LIST="9.0" python train.py \
             --root ${DATA} \
             --seed ${SEED} \
             --trainer ${TRAINER} \
